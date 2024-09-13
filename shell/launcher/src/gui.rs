@@ -78,6 +78,9 @@ pub enum Message {
     Net { online: bool },
     Memory { total: u64, used: u64 },
     Swipe { swipe: Swipe },
+    UpdateSwipe(Option<Swipe>),
+    UpdateActiveSwipe(Option<Swipe>),
+    UpdateSwipes(Option<Swipe>, Option<Swipe>),
     SwipeEnd,
     Sound { value: u8 },
     Brightness { value: u8 },
@@ -220,218 +223,9 @@ pub struct LauncherState {
 #[component(State = "LauncherState")]
 #[derive(Debug, Default)]
 pub struct Launcher {}
-impl Launcher {
-    fn handle_on_drag(&mut self, logical_delta: Point) -> Option<mctk_core::component::Message> {
-        let dx = logical_delta.x;
-        let dy = logical_delta.y;
-        println!("dx {:?} dy {:?}", dx, dy);
-        if let Some(mut swipe) = self.state_ref().swipe.clone() {
-            match swipe.direction {
-                SwipeDirection::Up => {
-                    if dy > 0. {
-                        self.state_mut().swipe = None;
-                        self.state_mut().active_swipe = None;
-                        return None;
-                    }
-
-                    swipe.dx = -dx as i32;
-                    swipe.dy = (480. + dy) as i32;
-                }
-                SwipeDirection::Down => {
-                    if dy < 0. {
-                        self.state_mut().swipe = None;
-                        self.state_mut().active_swipe = None;
-                        return None;
-                    }
-
-                    swipe.dx = dx as i32;
-                    swipe.dy = dy as i32;
-                    if dy as i32 > swipe.threshold_dy
-                        && self.state_ref().running_apps_count > 0
-                        && self.state_ref().current_layer != Layer::Top
-                    {
-                        if let Some(app_channel) = self.state_ref().app_channel.clone() {
-                            let _ = app_channel.send(AppMessage::ChangeLayer(Layer::Top));
-                        };
-                    }
-                }
-                SwipeDirection::Left => {}
-                SwipeDirection::Right => {}
-            }
-
-            self.state_mut().swipe = Some(swipe);
-        };
-
-        None
-    }
-
-    pub fn handle_on_drag_end(&mut self) {
-        println!(
-            "Launcher::handle_on_drag_end() {:?}",
-            self.state_ref().swipe.clone()
-        );
-        if let Some(mut swipe) = self.state_ref().swipe.clone() {
-            if swipe.state == SwipeState::UserSwiping {
-                swipe.state = SwipeState::CompletingSwipe;
-                self.state_mut().swipe = Some(swipe);
-            }
-        }
-    }
-
-    pub fn is_drag_from_edges(
-        &self,
-        current_logical_aabb: AABB,
-        relative_logical_position: Point,
-    ) -> Option<(AABB, AABB, AABB, AABB)> {
-        let aabb = current_logical_aabb;
-        let pos = relative_logical_position;
-        let top_area = aabb.set_scale(aabb.width(), 36.);
-        let left_area = aabb.set_scale(20., aabb.height());
-        let right_area = aabb
-            .set_top_left(460., aabb.pos.y)
-            .set_scale(20., aabb.height());
-        let bottom_area = aabb
-            .set_top_left(aabb.pos.x, 460.)
-            .set_scale(aabb.width(), 20.);
-
-        if !(top_area.is_under(pos)
-            || left_area.is_under(pos)
-            || bottom_area.is_under(pos)
-            || right_area.is_under(pos))
-        {
-            return None;
-        }
-
-        Some((top_area, left_area, bottom_area, right_area))
-    }
-
-    pub fn handle_on_drag_start(
-        &mut self,
-        pos: Point,
-        edges: (AABB, AABB, AABB, AABB),
-        aabb: AABB,
-    ) {
-        let (top_area, left_area, bottom_area, right_area) = edges;
-
-        println!(
-            "under {:?} {:?} {:?} {:?}",
-            top_area.is_under(pos),
-            left_area.is_under(pos),
-            bottom_area.is_under(pos),
-            right_area.is_under(pos),
-        );
-        let mut swipe = None;
-
-        if top_area.is_under(pos) {
-            swipe = Some(Swipe {
-                max_dy: aabb.height() as i32,
-                min_dy: 0,
-                threshold_dy: 88,
-                direction: SwipeDirection::Down,
-                ..Default::default()
-            });
-        } else if bottom_area.is_under(pos) {
-            swipe = Some(Swipe {
-                dy: 480,
-                max_dy: aabb.height() as i32,
-                min_dy: 0,
-                direction: SwipeDirection::Up,
-                ..Default::default()
-            })
-        }
-        // else if left_area.is_under(pos) {
-        //     swipe = Some(Swipe {
-        //         max_dx: aabb.width() as i32,
-        //         min_dx: 0,
-        //         direction: SwipeDirection::Right,
-        //         ..Default::default()
-        //     })
-        // } else if right_area.is_under(pos) {
-        //     swipe = Some(Swipe {
-        //         max_dx: aabb.width() as i32,
-        //         min_dx: 0,
-        //         direction: SwipeDirection::Left,
-        //         ..Default::default()
-        //     })
-        // }
-
-        self.state_mut().swipe = swipe;
-    }
-}
 
 #[state_component_impl(LauncherState)]
 impl Component for Launcher {
-    fn on_tick(&mut self, _event: &mut mctk_core::event::Event<mctk_core::event::Tick>) {
-        println!("on_tick {:?}", self.state.is_some());
-        if self.state.is_none() {
-            return;
-        }
-
-        println!("on_tick swipe {:?}", self.state_ref().swipe.clone());
-        if let Some(mut swipe) = self.state_ref().swipe.clone() {
-            let Swipe {
-                dx,
-                mut dy,
-                max_dx,
-                max_dy,
-                min_dx,
-                min_dy,
-                direction,
-                state,
-                is_closer,
-                threshold_dy,
-            } = swipe.clone();
-
-            // println!("Launcher::on_tick() dy {:?} {:?}", dy, state);
-            if state == SwipeState::Completed || state == SwipeState::Cancelled {
-                if is_closer {
-                    self.state_mut().swipe = None;
-                }
-                return;
-            }
-
-            if state == SwipeState::CancellingSwipe {
-                if direction == SwipeDirection::Down {
-                    if dy < threshold_dy {
-                        self.state_mut().swipe = Some(swipe.reverse());
-                        return;
-                    }
-                } else if direction == SwipeDirection::Up {
-                    if (max_dy - dy) < threshold_dy {
-                        self.state_mut().swipe = Some(swipe.reverse());
-                        return;
-                    }
-                }
-            }
-
-            if state == SwipeState::CompletingSwipe {
-                if direction == SwipeDirection::Down {
-                    if dy >= max_dy {
-                        swipe.state = SwipeState::Completed;
-                        // return;
-                    }
-
-                    swipe.dy = (dy + 15).max(min_dy).min(max_dy);
-                    println!("swipe.dy {:?}", swipe.dy);
-                }
-                if direction == SwipeDirection::Up {
-                    if dy <= min_dy {
-                        swipe.state = SwipeState::Completed;
-                        if let Some(app_channel) = self.state_ref().app_channel.clone() {
-                            let _ = app_channel.send(AppMessage::ChangeLayer(Layer::Bottom));
-                        }
-                        // return;
-                    }
-
-                    swipe.dy = (dy - 15).max(min_dy).min(max_dy);
-                    println!("swipe.dy {:?}", swipe.dy);
-                }
-            }
-            self.state_mut().swipe = Some(swipe);
-            println!("updated swipe");
-        }
-    }
-
     fn init(&mut self) {
         let settings = match settings::read_settings_yml() {
             Ok(settings) => settings,
@@ -473,167 +267,6 @@ impl Component for Launcher {
             restart_pressed: false,
             current_layer: Layer::Bottom,
         });
-    }
-
-    fn view(&self) -> Option<Node> {
-        let cpu_usage = self.state_ref().cpu_usage.clone();
-        let uptime = self.state_ref().uptime.clone();
-        let machine_name = self.state_ref().machine_name.clone();
-        let ip_address = self.state_ref().ip_address.clone();
-        let online = self.state_ref().online.clone();
-        let used_memory = self.state_ref().used_memory;
-        let time = self.state_ref().time.clone();
-        let date = self.state_ref().date.clone();
-        let battery_level = self.state_ref().battery_level.clone();
-        let wireless_status = self.state_ref().wireless_status.clone();
-        let bluetooth_status = self.state_ref().bluetooth_status.clone();
-        let rotation_status = self.state_ref().rotation_status.clone();
-        let settings = self.state_ref().settings.clone();
-        let current_screen = self.state_ref().current_screen.clone();
-        let swipe = self.state_ref().swipe.clone();
-        let active_swipe = self.state_ref().active_swipe.clone();
-        // println!("swipe is {:?} {:?}", swipe, active_swipe);
-        let sound = self.state_ref().sound;
-        let brightness = self.state_ref().brightness;
-        let on_top_of_other_apps = self.state_ref().running_apps_count > 0;
-        let running_apps = self.state_ref().running_apps.clone();
-        let installed_apps = self.state_ref().installed_apps.clone();
-        let show_power_options = self.state_ref().show_power_options;
-        let show_running_apps = self.state_ref().show_running_apps;
-        let shutdown_pressed = self.state_ref().shutdown_pressed;
-        let restart_pressed = self.state_ref().restart_pressed;
-
-        let mut start_node = node!(
-            Div::new().bg(Color::rgba(0., 0., 0., 0.64)),
-            lay![
-                size_pct: [100],
-                cross_alignment: Alignment::Stretch,
-                axis_alignment: Alignment::Stretch,
-                direction: Direction::Column,
-                // padding: [22]
-            ]
-        );
-
-        if on_top_of_other_apps || !(current_screen == Screens::Home) || show_running_apps {
-            start_node = start_node.push(node!(
-                StatusBar {
-                    battery_level,
-                    wireless_status,
-                    bluetooth_status,
-                    current_time: time.clone()
-                },
-                lay![ size: [Auto, 36] ]
-            ));
-        }
-
-        // start_node = start_node.push(node!(
-        //     AppSwitcher { running_apps },
-        //     lay![size_pct: [100, Auto],]
-        // ));
-
-        if show_running_apps {
-            start_node = start_node.push(node!(
-                AppSwitcher { running_apps },
-                lay![
-                    size_pct: [100],
-                    position_type: Absolute,
-                    position: [36., 0., 0., 0.],
-                ]
-            ));
-        }
-
-        let mut down_swipe = 0;
-        let mut up_swipe = 480;
-        if let Some(swipe) = swipe.clone() {
-            if (swipe.direction == SwipeDirection::Down && !swipe.is_closer)
-                || (swipe.direction == SwipeDirection::Up && swipe.is_closer)
-            {
-                down_swipe = swipe.dy;
-            } else if (swipe.direction == SwipeDirection::Up && !swipe.is_closer)
-                || (swipe.direction == SwipeDirection::Down && swipe.is_closer)
-            {
-                up_swipe = swipe.dy;
-            }
-        } else if let Some(swipe) = active_swipe.clone() {
-            if (swipe.direction == SwipeDirection::Down && !swipe.is_closer)
-                || (swipe.direction == SwipeDirection::Up && swipe.is_closer)
-            {
-                down_swipe = swipe.dy;
-            } else if (swipe.direction == SwipeDirection::Up && !swipe.is_closer)
-                || (swipe.direction == SwipeDirection::Down && swipe.is_closer)
-            {
-                up_swipe = swipe.dy;
-            }
-        }
-
-        if down_swipe.abs() > 20 {
-            start_node = start_node.push(node!(
-                SettingsPanel {
-                    swipe: down_swipe,
-                    sound,
-                    brightness,
-                    battery_level,
-                    wireless_status,
-                    bluetooth_status,
-                    rotation_status
-                },
-                lay![
-                    size_pct: [100],
-                    position_type: Absolute,
-                    position: [0., 0., 0., 0.],
-                ]
-            ));
-        }
-
-        if (up_swipe.abs()) < 460 {
-            // println!("up_swipe {:?} ", up_swipe);
-            start_node = start_node.push(node!(
-                AppDrawer::new(installed_apps, up_swipe),
-                lay![
-                    size_pct: [100],
-                    position_type: Absolute,
-                    position: [0., 0., 0., 0.],
-                ]
-            ));
-        }
-
-        if show_power_options {
-            start_node = start_node.push(node!(
-                PowerOptions {
-                    shutdown_pressed,
-                    restart_pressed
-                },
-                lay![
-                    size_pct: [100],
-                    position_type: Absolute,
-                    position: [0., 0., 0., 0.],
-                ]
-            ));
-        }
-
-        if !on_top_of_other_apps && !show_running_apps {
-            start_node = start_node.push(node!(
-                HomeUi {
-                    settings,
-                    battery_level,
-                    wireless_status,
-                    bluetooth_status,
-                    time,
-                    date,
-                    cpu_usage,
-                    uptime,
-                    machine_name,
-                    ip_address,
-                    online,
-                    used_memory,
-                    is_lock_screen: false,
-                    disable_activity: (swipe.is_some() || active_swipe.is_some())
-                },
-                lay![size_pct: [100, Auto],]
-            ));
-        }
-
-        Some(start_node)
     }
 
     fn update(&mut self, message: component::Message) -> Vec<component::Message> {
@@ -897,7 +530,22 @@ impl Component for Launcher {
                     }
                 },
                 Message::ChangeLayer(layer) => {
+                    println!("Message::ChangeLayer {:?}", layer);
                     self.state_mut().current_layer = *layer;
+                    if let Some(app_channel) = self.state_ref().app_channel.clone() {
+                        let _ = app_channel.send(AppMessage::ChangeLayer(*layer));
+                    }
+                }
+                Message::UpdateSwipe(swipe) => {
+                    println!("update swipe {:?}", swipe);
+                    self.state_mut().swipe = swipe.clone();
+                }
+                Message::UpdateActiveSwipe(swipe) => {
+                    self.state_mut().active_swipe = swipe.clone();
+                }
+                Message::UpdateSwipes(swipe, active_swipe) => {
+                    self.state_mut().swipe = swipe.clone();
+                    self.state_mut().active_swipe = active_swipe.clone();
                 }
                 _ => (),
             }
@@ -905,22 +553,484 @@ impl Component for Launcher {
         vec![]
     }
 
+    fn view(&self) -> Option<Node> {
+        let cpu_usage = self.state_ref().cpu_usage.clone();
+        let uptime = self.state_ref().uptime.clone();
+        let machine_name = self.state_ref().machine_name.clone();
+        let ip_address = self.state_ref().ip_address.clone();
+        let online = self.state_ref().online.clone();
+        let used_memory = self.state_ref().used_memory;
+        let time = self.state_ref().time.clone();
+        let date = self.state_ref().date.clone();
+        let battery_level = self.state_ref().battery_level.clone();
+        let wireless_status = self.state_ref().wireless_status.clone();
+        let bluetooth_status = self.state_ref().bluetooth_status.clone();
+        let rotation_status = self.state_ref().rotation_status.clone();
+        let settings = self.state_ref().settings.clone();
+        let current_screen = self.state_ref().current_screen.clone();
+        let swipe = self.state_ref().swipe.clone();
+        let active_swipe = self.state_ref().active_swipe.clone();
+        let sound = self.state_ref().sound;
+        let brightness = self.state_ref().brightness;
+        let on_top_of_other_apps = self.state_ref().running_apps_count > 0;
+        let running_apps = self.state_ref().running_apps.clone();
+        let installed_apps = self.state_ref().installed_apps.clone();
+        let show_power_options = self.state_ref().show_power_options;
+        let show_running_apps = self.state_ref().show_running_apps;
+        let shutdown_pressed = self.state_ref().shutdown_pressed;
+        let restart_pressed = self.state_ref().restart_pressed;
+        let running_apps_count = self.state_ref().running_apps_count;
+        let current_layer = self.state_ref().current_layer;
+        let app_channel = self.state_ref().app_channel.clone();
+
+        Some(node!(
+            LauncherComponents {
+                settings,
+                battery_level,
+                wireless_status,
+                bluetooth_status,
+                rotation_status,
+                time,
+                date,
+                cpu_usage,
+                uptime,
+                machine_name,
+                ip_address,
+                online,
+                used_memory,
+                current_screen,
+                swipe,
+                active_swipe,
+                sound,
+                brightness,
+                running_apps,
+                installed_apps,
+                show_power_options,
+                show_running_apps,
+                shutdown_pressed,
+                restart_pressed,
+                running_apps_count,
+                app_channel,
+                current_layer
+            },
+            lay![size_pct: [100]]
+        ))
+    }
+}
+
+impl RootComponent<AppParams> for Launcher {
+    fn root(&mut self, window: &dyn Any, app_params: &dyn Any) {
+        let app_params = app_params.downcast_ref::<AppParams>().unwrap();
+        let app_channel = app_params.app_channel.clone();
+        let installed_apps = app_params.installed_apps.clone();
+        self.state_mut().app_channel = app_channel;
+        if let Some(apps) = installed_apps {
+            self.state_mut().installed_apps = apps
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct LauncherComponents {
+    settings: LauncherSettings,
+    battery_level: BatteryLevel,
+    wireless_status: WirelessStatus,
+    bluetooth_status: BluetoothStatus,
+    rotation_status: RotationStatus,
+    time: String,
+    date: String,
+    cpu_usage: VecDeque<u8>,
+    uptime: String,
+    machine_name: String,
+    ip_address: String,
+    online: bool,
+    used_memory: u64,
+    current_screen: Screens,
+    swipe: Option<Swipe>,
+    active_swipe: Option<Swipe>,
+    sound: u8,
+    brightness: u8,
+    running_apps_count: i32,
+    app_channel: Option<Sender<AppMessage>>,
+    running_apps: Vec<RunningApp>,
+    installed_apps: Vec<DesktopEntry>,
+    show_power_options: bool,
+    show_running_apps: bool,
+    shutdown_pressed: bool,
+    restart_pressed: bool,
+    current_layer: Layer,
+}
+
+impl LauncherComponents {
+    fn handle_on_drag(&mut self, logical_delta: Point) -> Option<mctk_core::component::Message> {
+        let dx = logical_delta.x;
+        let dy = logical_delta.y;
+        println!("dx {:?} dy {:?}", dx, dy);
+        if let Some(mut swipe) = self.swipe.clone() {
+            match swipe.direction {
+                SwipeDirection::Up => {
+                    if dy > 0. {
+                        return Some(msg!(Message::UpdateSwipes(None, None)));
+                    }
+
+                    swipe.dx = -dx as i32;
+                    swipe.dy = (480. + dy) as i32;
+                }
+                SwipeDirection::Down => {
+                    if dy < 0. {
+                        return Some(msg!(Message::UpdateSwipes(None, None)));
+                    }
+
+                    swipe.dx = dx as i32;
+                    swipe.dy = dy as i32;
+                }
+                SwipeDirection::Left => {}
+                SwipeDirection::Right => {}
+            }
+
+            return Some(msg!(Message::UpdateSwipe(Some(swipe))));
+        };
+
+        None
+    }
+
+    pub fn handle_on_drag_end(&mut self) -> Option<mctk_core::component::Message> {
+        println!("Launcher::handle_on_drag_end() {:?}", self.swipe.clone());
+        if let Some(mut swipe) = self.swipe.clone() {
+            if swipe.state == SwipeState::UserSwiping {
+                swipe.state = SwipeState::CompletingSwipe;
+                return Some(msg!(Message::UpdateSwipe(Some(swipe))));
+            }
+        }
+        None
+    }
+
+    pub fn is_drag_from_edges(
+        &self,
+        current_logical_aabb: AABB,
+        relative_logical_position: Point,
+    ) -> Option<(AABB, AABB, AABB, AABB)> {
+        let aabb = current_logical_aabb;
+        let pos = relative_logical_position;
+        let top_area = aabb.set_scale(aabb.width(), 36.);
+        let left_area = aabb.set_scale(20., aabb.height());
+        let right_area = aabb
+            .set_top_left(460., aabb.pos.y)
+            .set_scale(20., aabb.height());
+        let bottom_area = aabb
+            .set_top_left(aabb.pos.x, 460.)
+            .set_scale(aabb.width(), 20.);
+
+        if !(top_area.is_under(pos)
+            || left_area.is_under(pos)
+            || bottom_area.is_under(pos)
+            || right_area.is_under(pos))
+        {
+            return None;
+        }
+
+        Some((top_area, left_area, bottom_area, right_area))
+    }
+
+    pub fn handle_on_drag_start(
+        &mut self,
+        pos: Point,
+        edges: (AABB, AABB, AABB, AABB),
+        aabb: AABB,
+    ) -> Option<mctk_core::component::Message> {
+        let (top_area, left_area, bottom_area, right_area) = edges;
+
+        println!(
+            "under {:?} {:?} {:?} {:?}",
+            top_area.is_under(pos),
+            left_area.is_under(pos),
+            bottom_area.is_under(pos),
+            right_area.is_under(pos),
+        );
+        let mut swipe = None;
+
+        if top_area.is_under(pos) {
+            swipe = Some(Swipe {
+                max_dy: aabb.height() as i32,
+                min_dy: 0,
+                threshold_dy: 88,
+                direction: SwipeDirection::Down,
+                ..Default::default()
+            });
+        } else if bottom_area.is_under(pos) {
+            swipe = Some(Swipe {
+                dy: 480,
+                max_dy: aabb.height() as i32,
+                min_dy: 0,
+                direction: SwipeDirection::Up,
+                ..Default::default()
+            })
+        }
+        // else if left_area.is_under(pos) {
+        //     swipe = Some(Swipe {
+        //         max_dx: aabb.width() as i32,
+        //         min_dx: 0,
+        //         direction: SwipeDirection::Right,
+        //         ..Default::default()
+        //     })
+        // } else if right_area.is_under(pos) {
+        //     swipe = Some(Swipe {
+        //         max_dx: aabb.width() as i32,
+        //         min_dx: 0,
+        //         direction: SwipeDirection::Left,
+        //         ..Default::default()
+        //     })
+        // }
+
+        Some(msg!(Message::UpdateSwipe(swipe)))
+    }
+}
+
+impl Component for LauncherComponents {
+    fn on_tick(&mut self, event: &mut mctk_core::event::Event<mctk_core::event::Tick>) {
+        println!("on_tick");
+
+        // println!("on_tick swipe {:?}", self.state_ref().swipe.clone());
+        if let Some(mut swipe) = self.swipe.clone() {
+            println!("inside if");
+            let Swipe {
+                dx,
+                mut dy,
+                max_dx,
+                max_dy,
+                min_dx,
+                min_dy,
+                direction,
+                state,
+                is_closer,
+                threshold_dy,
+            } = swipe.clone();
+
+            // println!("Launcher::on_tick() dy {:?} {:?}", dy, state);
+            if state == SwipeState::Completed || state == SwipeState::Cancelled {
+                println!("block a");
+                if is_closer {
+                    event.emit(msg!(Message::UpdateSwipe(None)));
+                }
+                return;
+            }
+
+            if state == SwipeState::CancellingSwipe {
+                println!("block b");
+                if direction == SwipeDirection::Down {
+                    if dy < threshold_dy {
+                        event.emit(msg!(Message::UpdateSwipe(Some(swipe.reverse()))));
+                        return;
+                    }
+                } else if direction == SwipeDirection::Up {
+                    if (max_dy - dy) < threshold_dy {
+                        event.emit(msg!(Message::UpdateSwipe(Some(swipe.reverse()))));
+                        return;
+                    }
+                }
+            }
+
+            if state == SwipeState::CompletingSwipe {
+                println!("block c");
+                if direction == SwipeDirection::Down {
+                    if dy >= max_dy {
+                        swipe.state = SwipeState::Completed;
+                        // return;
+                    }
+
+                    swipe.dy = (dy + 15).max(min_dy).min(max_dy);
+                    event.emit(msg!(Message::UpdateSwipe(Some(swipe.clone()))));
+                    // println!("swipe.dy {:?}", swipe.dy);
+                }
+                if direction == SwipeDirection::Up {
+                    if dy <= min_dy {
+                        swipe.state = SwipeState::Completed;
+                        // if let Some(app_channel) = self.state_ref().app_channel.clone() {
+                        //     let _ = app_channel.send(AppMessage::ChangeLayer(Layer::Bottom));
+                        // }
+                        if self.current_layer != Layer::Bottom {
+                            event.emit(msg!(Message::ChangeLayer(Layer::Bottom)));
+                        }
+                        // return;
+                    }
+
+                    swipe.dy = (dy - 15).max(min_dy).min(max_dy);
+                    event.emit(msg!(Message::UpdateSwipe(Some(swipe))));
+                    // println!("swipe.dy {:?}", swipe.dy);
+                }
+            }
+            // println!("updated swipe");
+        }
+    }
+
+    fn view(&self) -> Option<Node> {
+        let cpu_usage = self.cpu_usage.clone();
+        let uptime = self.uptime.clone();
+        let machine_name = self.machine_name.clone();
+        let ip_address = self.ip_address.clone();
+        let online = self.online.clone();
+        let used_memory = self.used_memory;
+        let time = self.time.clone();
+        let date = self.date.clone();
+        let battery_level = self.battery_level.clone();
+        let wireless_status = self.wireless_status.clone();
+        let bluetooth_status = self.bluetooth_status.clone();
+        let rotation_status = self.rotation_status.clone();
+        let settings = self.settings.clone();
+        let current_screen = self.current_screen.clone();
+        let swipe = self.swipe.clone();
+        let active_swipe = self.active_swipe.clone();
+        // println!("swipe is {:?} {:?}", swipe, active_swipe);
+        let sound = self.sound;
+        let brightness = self.brightness;
+        let on_top_of_other_apps = self.running_apps_count > 0;
+        let running_apps = self.running_apps.clone();
+        let installed_apps = self.installed_apps.clone();
+        let show_power_options = self.show_power_options;
+        let show_running_apps = self.show_running_apps;
+        let shutdown_pressed = self.shutdown_pressed;
+        let restart_pressed = self.restart_pressed;
+
+        let mut start_node = node!(
+            Div::new().bg(Color::rgba(0., 0., 0., 0.64)),
+            lay![
+                size_pct: [100],
+                cross_alignment: Alignment::Stretch,
+                axis_alignment: Alignment::Stretch,
+                direction: Direction::Column,
+                // padding: [22]
+            ]
+        );
+
+        if on_top_of_other_apps || !(current_screen == Screens::Home) || show_running_apps {
+            start_node = start_node.push(node!(
+                StatusBar {
+                    battery_level,
+                    wireless_status,
+                    bluetooth_status,
+                    current_time: time.clone()
+                },
+                lay![ size: [Auto, 36] ]
+            ));
+        }
+
+        // start_node = start_node.push(node!(
+        //     AppSwitcher { running_apps },
+        //     lay![size_pct: [100, Auto],]
+        // ));
+
+        if show_running_apps {
+            start_node = start_node.push(node!(
+                AppSwitcher { running_apps },
+                lay![
+                    size_pct: [100],
+                    position_type: Absolute,
+                    position: [36., 0., 0., 0.],
+                ]
+            ));
+        }
+
+        let mut down_swipe = 0;
+        let mut up_swipe = 480;
+        if let Some(swipe) = swipe.clone() {
+            if (swipe.direction == SwipeDirection::Down && !swipe.is_closer)
+                || (swipe.direction == SwipeDirection::Up && swipe.is_closer)
+            {
+                down_swipe = swipe.dy;
+            } else if (swipe.direction == SwipeDirection::Up && !swipe.is_closer)
+                || (swipe.direction == SwipeDirection::Down && swipe.is_closer)
+            {
+                up_swipe = swipe.dy;
+            }
+        } else if let Some(swipe) = active_swipe.clone() {
+            if (swipe.direction == SwipeDirection::Down && !swipe.is_closer)
+                || (swipe.direction == SwipeDirection::Up && swipe.is_closer)
+            {
+                down_swipe = swipe.dy;
+            } else if (swipe.direction == SwipeDirection::Up && !swipe.is_closer)
+                || (swipe.direction == SwipeDirection::Down && swipe.is_closer)
+            {
+                up_swipe = swipe.dy;
+            }
+        }
+
+        if down_swipe.abs() > 20 {
+            start_node = start_node.push(node!(
+                SettingsPanel {
+                    swipe: down_swipe,
+                    sound,
+                    brightness,
+                    battery_level,
+                    wireless_status,
+                    bluetooth_status,
+                    rotation_status
+                },
+                lay![
+                    size_pct: [100],
+                    position_type: Absolute,
+                    position: [0., 0., 0., 0.],
+                ]
+            ));
+        }
+
+        if (up_swipe.abs()) < 460 {
+            // println!("up_swipe {:?} ", up_swipe);
+            start_node = start_node.push(node!(
+                AppDrawer::new(installed_apps, up_swipe),
+                lay![
+                    size_pct: [100],
+                    position_type: Absolute,
+                    position: [0., 0., 0., 0.],
+                ]
+            ));
+        }
+
+        if show_power_options {
+            start_node = start_node.push(node!(
+                PowerOptions {
+                    shutdown_pressed,
+                    restart_pressed
+                },
+                lay![
+                    size_pct: [100],
+                    position_type: Absolute,
+                    position: [0., 0., 0., 0.],
+                ]
+            ));
+        }
+
+        if !on_top_of_other_apps && !show_running_apps {
+            start_node = start_node.push(node!(
+                HomeUi {
+                    settings,
+                    battery_level,
+                    wireless_status,
+                    bluetooth_status,
+                    time,
+                    date,
+                    cpu_usage,
+                    uptime,
+                    machine_name,
+                    ip_address,
+                    online,
+                    used_memory,
+                    is_lock_screen: false,
+                    disable_activity: (swipe.is_some() || active_swipe.is_some())
+                },
+                lay![size_pct: [100, Auto],]
+            ));
+        }
+
+        Some(start_node)
+    }
+
     fn render(&mut self, context: component::RenderContext) -> Option<Vec<Renderable>> {
-        if self.state_ref().running_apps_count > 0 {
+        if self.running_apps_count > 0 {
             return None;
         }
 
         let mut rs = vec![];
-        if self
-            .state_ref()
-            .settings
-            .modules
-            .background
-            .icon
-            .default
-            .len()
-            > 0
-        {
+        if self.settings.modules.background.icon.default.len() > 0 {
             let width = context.aabb.width();
             let height = context.aabb.height();
             let AABB { pos, .. } = context.aabb;
@@ -947,32 +1057,40 @@ impl Component for Launcher {
         Some(rs)
     }
 
-    fn render_hash(&self, hasher: &mut component::ComponentHasher) {
-        self.state_ref().swipe.hash(hasher);
-        self.state_ref().active_swipe.hash(hasher);
-        self.state_ref().running_apps_count.hash(hasher);
-        self.state_ref().show_power_options.hash(hasher);
-        self.state_ref().show_running_apps.hash(hasher);
+    fn props_hash(&self, hasher: &mut component::ComponentHasher) {
+        self.swipe.hash(hasher);
+        self.active_swipe.hash(hasher);
+        self.running_apps_count.hash(hasher);
+        self.show_power_options.hash(hasher);
+        self.show_running_apps.hash(hasher);
         // println!("render hash is {:?}", hasher.finish());
     }
 
     fn on_drag_start(&mut self, event: &mut mctk_core::event::Event<mctk_core::event::DragStart>) {
-        if self.state_ref().swipe.is_some() {
+        if self.swipe.is_some() {
             println!("Swipe already exists");
             return;
         }
 
-        println!(
-            "Launcher::on_drag_start() {:?}",
-            event.physical_mouse_position()
-        );
+        println!("Launcher::on_drag_start()",);
 
         let aabb = event.current_logical_aabb();
         let pos = event.physical_mouse_position();
 
         if let Some(edges) = self.is_drag_from_edges(aabb, pos) {
+            if let Some(app_channel) = self.app_channel.clone() {
+                let _ = app_channel.send(AppMessage::ChangeLayer(Layer::Top));
+            };
             event.stop_bubbling();
-            self.handle_on_drag_start(pos, edges, aabb);
+            if let Some(msg) = self.handle_on_drag_start(pos, edges, aabb) {
+                println!("sending message");
+                event.emit(msg);
+                // if let Some(app_channel) = &self.app_channel {
+                //     let _ = app_channel.send(AppMessage::ChangeLayer(Layer::Top));
+                // }
+
+                // event.emit(msg!(Message::ChangeLayer(Layer::Top)));
+            }
         };
     }
 
@@ -980,11 +1098,8 @@ impl Component for Launcher {
         &mut self,
         event: &mut mctk_core::event::Event<mctk_core::event::TouchDragStart>,
     ) {
-        println!(
-            "Launcher::on_touch_drag_start() {:?}",
-            event.physical_touch_position()
-        );
-        if self.state_ref().swipe.is_some() {
+        println!("Launcher::on_touch_drag_start()");
+        if self.swipe.is_some() {
             println!("Swipe already exists");
             return;
         }
@@ -993,8 +1108,14 @@ impl Component for Launcher {
         let pos = event.physical_touch_position();
 
         if let Some(edges) = self.is_drag_from_edges(aabb, pos) {
+            // if let Some(app_channel) = self.state_ref().app_channel.clone() {
+            //     let _ = app_channel.send(AppMessage::ChangeLayer(Layer::Top));
+            // };
             event.stop_bubbling();
-            self.handle_on_drag_start(pos, edges, aabb);
+            if let Some(msg) = self.handle_on_drag_start(pos, edges, aabb) {
+                event.emit(msg);
+                // event.emit(msg!(Message::ChangeLayer(Layer::Top)));
+            }
         };
     }
 
@@ -1002,7 +1123,7 @@ impl Component for Launcher {
         let logical_delta = event.bounded_logical_delta();
         println!("Launcher::on_drag() {:?}", logical_delta);
         if let Some(msg) = self.handle_on_drag(logical_delta) {
-            self.update(msg);
+            event.emit(msg);
         }
     }
 
@@ -1010,12 +1131,14 @@ impl Component for Launcher {
         let logical_delta = event.bounded_logical_delta();
         println!("Launcher::on_touch_drag() {:?}", logical_delta);
         if let Some(msg) = self.handle_on_drag(logical_delta) {
-            self.update(msg);
+            event.emit(msg);
         }
     }
 
     fn on_drag_end(&mut self, event: &mut mctk_core::event::Event<mctk_core::event::DragEnd>) {
-        self.handle_on_drag_end();
+        if let Some(msg) = self.handle_on_drag_end() {
+            event.emit(msg);
+        }
     }
 
     fn on_touch_drag_end(
@@ -1026,18 +1149,8 @@ impl Component for Launcher {
             "Launcher::on_touch_drag_end() {:?}",
             event.physical_touch_position()
         );
-        self.handle_on_drag_end();
-    }
-}
-
-impl RootComponent<AppParams> for Launcher {
-    fn root(&mut self, window: &dyn Any, app_params: &dyn Any) {
-        let app_params = app_params.downcast_ref::<AppParams>().unwrap();
-        let app_channel = app_params.app_channel.clone();
-        let installed_apps = app_params.installed_apps.clone();
-        self.state_mut().app_channel = app_channel;
-        if let Some(apps) = installed_apps {
-            self.state_mut().installed_apps = apps
+        if let Some(msg) = self.handle_on_drag_end() {
+            event.emit(msg);
         }
     }
 }

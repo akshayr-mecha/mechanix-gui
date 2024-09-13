@@ -149,7 +149,7 @@ impl Component for SettingsPanel {
             ]
         ));
 
-        println!("swipe - height {:?}", swipe - height);
+        // println!("swipe - height {:?}", swipe - height);
 
         let sc1 = node!(
             RoundedRect {

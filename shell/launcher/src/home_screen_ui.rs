@@ -152,15 +152,14 @@ pub fn launch_homescreen(ui_params: UiParams) -> anyhow::Result<()> {
                     }
                 },
                 AppMessage::ChangeLayer(layer) => {
+                    println!("AppMessage::ChangeLayer {:?}", layer);
                     layer_shell_opts.layer = layer;
-                    let _ = layer_tx
+                    let res = layer_tx
                         .clone()
                         .send(LayerWindowMessage::ReconfigureLayerOpts {
                             opts: layer_shell_opts.clone(),
                         });
-                    let _ = window_tx_2.clone().send(WindowMessage::Send {
-                        message: msg!(Message::ChangeLayer(layer)),
-                    });
+                    println!("change layer res {:?}", res);
                 }
                 AppMessage::Clock { date, time } => {
                     //println!("AppMessage::Clock {:?}", current_time);

@@ -1,6 +1,6 @@
-pub mod server;
-pub mod database;
-pub mod validator;
 pub mod cli;
-pub mod utils;
+pub mod database;
 pub mod error;
+pub mod server;
+pub mod utils;
+pub mod validator;

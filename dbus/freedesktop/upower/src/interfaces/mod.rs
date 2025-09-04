@@ -13,10 +13,10 @@
 //! ## Modules
 //! - `device`: Strongly-typed enums and helpers for UPower device properties
 
+use crate::proxies::ProxyError;
 use anyhow::Result;
 use async_trait::async_trait;
 use zbus::proxy::PropertyStream;
-use crate::proxies::ProxyError;
 
 pub mod device;
 

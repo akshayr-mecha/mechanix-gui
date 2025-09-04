@@ -38,5 +38,7 @@ pub trait BluezInterface: Send + Sync {
     /// Get connected devices.
     async fn get_connected_devices(&self) -> Result<Vec<BluetoothDevice>, ProxyError>;
     async fn stream_bluetooth_enabled_status(&self) -> Result<PropertyStream<bool>, ProxyError>;
-    async fn stream_bluetooth_events(&self) -> Result<(InterfacesAddedStream, InterfacesRemovedStream), ProxyError>;
+    async fn stream_bluetooth_events(
+        &self,
+    ) -> Result<(InterfacesAddedStream, InterfacesRemovedStream), ProxyError>;
 }

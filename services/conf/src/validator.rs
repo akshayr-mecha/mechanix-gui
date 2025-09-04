@@ -4,7 +4,9 @@ use log::{debug, error, info, trace};
 use regex::Regex;
 use toml::Value;
 
-const ALLOWED_TYPES: &[&str] = &["string", "number", "bool", "array", "tuple", "object", "enum"];
+const ALLOWED_TYPES: &[&str] = &[
+    "string", "number", "bool", "array", "tuple", "object", "enum",
+];
 
 /// Validate a TOML schema against predefined rules.
 ///
@@ -93,57 +95,79 @@ pub fn validate_schema(toml_file: &Value) -> Result<(), ValidatorError> {
 ///
 /// This function returns an `InvalidSchemaType` error if the provided value is not a table.
 
-fn as_table<'a>(value: &'a Value, _context: &str) -> Result<&'a toml::value::Table, ValidatorError> {
-    value.as_table().ok_or_else(|| {
-        ValidatorError::InvalidSchemaType
-    })
+fn as_table<'a>(
+    value: &'a Value,
+    _context: &str,
+) -> Result<&'a toml::value::Table, ValidatorError> {
+    value
+        .as_table()
+        .ok_or_else(|| ValidatorError::InvalidSchemaType)
 }
 
-fn get_required_str<'a>(entry: &'a toml::value::Table, field: &str, key: &str, section: &str) -> Result<&'a str, ValidatorError> {
-    entry.get(field)
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| ValidatorError::ValidationError(format!(
-            "Key '{}' in section '{}' missing or invalid '{}'", key, section, field
-        )))
+fn get_required_str<'a>(
+    entry: &'a toml::value::Table,
+    field: &str,
+    key: &str,
+    section: &str,
+) -> Result<&'a str, ValidatorError> {
+    entry.get(field).and_then(|v| v.as_str()).ok_or_else(|| {
+        ValidatorError::ValidationError(format!(
+            "Key '{}' in section '{}' missing or invalid '{}'",
+            key, section, field
+        ))
+    })
 }
 
 fn missing_field_error(field: &str, key: &str, section: &str) -> ValidatorError {
     ValidatorError::ValidationError(format!(
-        "Key '{}' in section '{}' missing '{}'", key, section, field
+        "Key '{}' in section '{}' missing '{}'",
+        key, section, field
     ))
 }
 
 fn validate_type(type_val: &str, key: &str, section: &str) -> Result<(), ValidatorError> {
     if type_val.trim().is_empty() {
         return Err(ValidatorError::ValidationError(format!(
-            "Key '{}' in section '{}' has empty 'type'", key, section,
+            "Key '{}' in section '{}' has empty 'type'",
+            key, section,
         )));
     }
     if !ALLOWED_TYPES.contains(&type_val) {
         return Err(ValidatorError::ValidationError(format!(
-            "Key '{}' in section '{}' has invalid 'type': '{}'", key, section, type_val,
+            "Key '{}' in section '{}' has invalid 'type': '{}'",
+            key, section, type_val,
         )));
     }
     Ok(())
 }
 
-fn validate_string_type(entry: &toml::value::Table, key: &str, section: &str) -> Result<(), ValidatorError> {
+fn validate_string_type(
+    entry: &toml::value::Table,
+    key: &str,
+    section: &str,
+) -> Result<(), ValidatorError> {
     if let Some(max_length) = entry.get("max_length") {
         if !max_length.is_integer() {
             return Err(ValidatorError::ValidationError(format!(
-                "Key '{}' in section '{}' has non-integer 'max_length'", key, section,
+                "Key '{}' in section '{}' has non-integer 'max_length'",
+                key, section,
             )));
         }
     }
     Ok(())
 }
 
-fn validate_number_type(entry: &toml::value::Table, key: &str, section: &str) -> Result<(), ValidatorError> {
+fn validate_number_type(
+    entry: &toml::value::Table,
+    key: &str,
+    section: &str,
+) -> Result<(), ValidatorError> {
     for field in ["min", "max"] {
         if let Some(val) = entry.get(field) {
             if !val.is_integer() && !val.is_float() {
                 return Err(ValidatorError::ValidationError(format!(
-                    "Key '{}' in section '{}' has non-numeric '{}'", key, section, field,
+                    "Key '{}' in section '{}' has non-numeric '{}'",
+                    key, section, field,
                 )));
             }
         }
@@ -151,19 +175,25 @@ fn validate_number_type(entry: &toml::value::Table, key: &str, section: &str) ->
     Ok(())
 }
 
-fn validate_enum_type(entry: &toml::value::Table, key: &str, section: &str) -> Result<(), ValidatorError> {
+fn validate_enum_type(
+    entry: &toml::value::Table,
+    key: &str,
+    section: &str,
+) -> Result<(), ValidatorError> {
     let options = match entry.get("options") {
         Some(Value::Array(options)) => options,
         _ => {
             return Err(ValidatorError::ValidationError(format!(
-                "Key '{}' in section '{}' is enum but missing valid 'options' array", key, section,
+                "Key '{}' in section '{}' is enum but missing valid 'options' array",
+                key, section,
             )));
         }
     };
 
     if options.is_empty() {
         return Err(ValidatorError::ValidationError(format!(
-            "Key '{}' in section '{}' is enum but 'options' array is empty", key, section,
+            "Key '{}' in section '{}' is enum but 'options' array is empty",
+            key, section,
         )));
     }
 
@@ -171,13 +201,13 @@ fn validate_enum_type(entry: &toml::value::Table, key: &str, section: &str) -> R
     let found = options.iter().any(|opt| opt.as_str() == Some(default));
     if !found {
         return Err(ValidatorError::ValidationError(format!(
-            "Key '{}' in section '{}' has default '{}' not in options {:?}", key, section, default, options,
+            "Key '{}' in section '{}' has default '{}' not in options {:?}",
+            key, section, default, options,
         )));
     }
 
     Ok(())
 }
-
 
 /// Validate a new setting with a given value, using the schema for the namespace.
 ///
@@ -214,7 +244,8 @@ pub fn validate_setting(schema: &Value, namespace: &str, value: &str) -> Result<
     let entry = get_schema_entry(schema, &parts)
         .ok_or_else(|| format!("Schema for '{}' not found", namespace))?;
     let entry_table = entry.as_table().ok_or("Schema entry is not a table")?;
-    let type_str = entry_table.get("type")
+    let type_str = entry_table
+        .get("type")
         .and_then(|v| v.as_str())
         .ok_or("Type not specified in schema")?;
     match type_str {
@@ -232,7 +263,8 @@ pub fn validate_setting(schema: &Value, namespace: &str, value: &str) -> Result<
             }
         }
         "enum" => {
-            let options = entry_table.get("options")
+            let options = entry_table
+                .get("options")
                 .and_then(|v| v.as_array())
                 .ok_or("Enum options not specified")?;
             let found = options.iter().any(|opt| opt.as_str() == Some(value));
@@ -278,7 +310,8 @@ pub fn validate_value(schema_entry: &Value, namespace: &str, value: &str) -> Res
     let entry = get_schema_entry(schema_entry, &parts)
         .ok_or_else(|| format!("Schema for '{}' not found", namespace))?;
 
-    let type_str = entry.get("type")
+    let type_str = entry
+        .get("type")
         .and_then(|v| v.as_str())
         .ok_or("Type not specified in schema")?;
     match type_str {
@@ -296,7 +329,8 @@ pub fn validate_value(schema_entry: &Value, namespace: &str, value: &str) -> Res
             }
         }
         "enum" => {
-            let options = entry.get("options")
+            let options = entry
+                .get("options")
                 .and_then(|v| v.as_array())
                 .ok_or("Enum options not specified")?;
             let found = options.iter().any(|opt| opt.as_str() == Some(value));
@@ -306,7 +340,10 @@ pub fn validate_value(schema_entry: &Value, namespace: &str, value: &str) -> Res
         }
         _ => return Err(format!("Unknown type '{}'", type_str)),
     }
-    info!("Value '{}' validated successfully for namespace '{}'", value, namespace);
+    info!(
+        "Value '{}' validated successfully for namespace '{}'",
+        value, namespace
+    );
     Ok(())
 }
 
@@ -380,6 +417,9 @@ pub fn generate_checksum(namespace: &str, schema_toml: &Value) -> anyhow::Result
     hasher.update(namespace.as_bytes());
     hasher.update(&application_schema_bytes);
     let checksum = hasher.finalize();
-    info!("Generated checksum: {:08x} for namespace: {}", checksum, namespace);
+    info!(
+        "Generated checksum: {:08x} for namespace: {}",
+        checksum, namespace
+    );
     Ok(checksum)
 }

@@ -138,12 +138,13 @@ pub async fn watch_setting(schema: &str, key: &Option<String>) -> Result<(), Cli
         }
     };
 
-    info!("Watching for changes to schema: {} key: {:?}",schema, key);
+    info!("Watching for changes to schema: {} key: {:?}", schema, key);
     // Only listen to signals where key matches the provided key
     let mut stream = if let Some(k) = key {
         match proxy
             .receive_signal_with_args("SchemaKeyChanged", &[(0, schema), (1, k)])
-            .await {
+            .await
+        {
             Ok(s) => s,
             Err(e) => {
                 error!("Failed to receive signal: {}", e);
@@ -153,7 +154,8 @@ pub async fn watch_setting(schema: &str, key: &Option<String>) -> Result<(), Cli
     } else {
         match proxy
             .receive_signal_with_args("SchemaKeyChanged", &[(0, schema)])
-            .await {
+            .await
+        {
             Ok(s) => s,
             Err(e) => {
                 error!("Failed to receive signal: {}", e);
@@ -168,7 +170,10 @@ pub async fn watch_setting(schema: &str, key: &Option<String>) -> Result<(), Cli
         .load_preset(UTF8_FULL)
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_header(vec!["Status"]);
-    table.add_row(vec![format!("Watching for changes to: {}", key.clone().unwrap_or(schema.to_string()))]);
+    table.add_row(vec![format!(
+        "Watching for changes to: {}",
+        key.clone().unwrap_or(schema.to_string())
+    )]);
     println!("{table}");
 
     // Process signals as they come in
@@ -289,7 +294,10 @@ pub async fn describe_key(schema: &str, key: &str) -> Result<(), CliError> {
             return Err(CliError::FailedToDescribeKey(e));
         }
     };
-    debug!("Received description for key {} in schema {}: {}", key, schema, description);
+    debug!(
+        "Received description for key {} in schema {}: {}",
+        key, schema, description
+    );
 
     // Create a table for displaying the key description
     let mut table = Table::new();

@@ -1,5 +1,5 @@
 use crate::utils::FileMetadata;
-use crate::{utils, FilesConfig};
+use crate::{FilesConfig, utils};
 use log::{debug, error, info, warn};
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::{HashSet, VecDeque};
@@ -12,13 +12,13 @@ use std::{
     time::Duration,
 };
 use tantivy::query::TermQuery;
-use tantivy::schema::{Field, IndexRecordOption, Value, STRING};
+use tantivy::schema::{Field, IndexRecordOption, STRING, Value};
 use tantivy::{
-    collector::TopDocs, doc, query::QueryParser, schema::{Schema, STORED, TEXT}, Document, Index, IndexReader,
-    IndexWriter,
-    TantivyDocument,
-    TantivyError,
-    Term,
+    Document, Index, IndexReader, IndexWriter, TantivyDocument, TantivyError, Term,
+    collector::TopDocs,
+    doc,
+    query::QueryParser,
+    schema::{STORED, Schema, TEXT},
 };
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::Sender;

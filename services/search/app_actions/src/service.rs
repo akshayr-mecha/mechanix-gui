@@ -1,5 +1,5 @@
-use crate::utils::{parse_action_schema, ActionSchema, ActionSetting, Arg};
-use crate::{utils, AppActionsConfig};
+use crate::utils::{ActionSchema, ActionSetting, Arg, parse_action_schema};
+use crate::{AppActionsConfig, utils};
 use log::{debug, error, info, warn};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Deserialize;
@@ -11,13 +11,13 @@ use std::{
     time::Duration,
 };
 use tantivy::query::TermQuery;
-use tantivy::schema::{Field, IndexRecordOption, Value, STRING};
+use tantivy::schema::{Field, IndexRecordOption, STRING, Value};
 use tantivy::{
-    collector::TopDocs, doc, query::QueryParser, schema::{Schema, STORED, TEXT}, Document, Index, IndexReader,
-    IndexWriter,
-    TantivyDocument,
-    TantivyError,
-    Term,
+    Document, Index, IndexReader, IndexWriter, TantivyDocument, TantivyError, Term,
+    collector::TopDocs,
+    doc,
+    query::QueryParser,
+    schema::{STORED, Schema, TEXT},
 };
 use tokio::{sync::mpsc, task::JoinHandle, time};
 use zbus::zvariant::{DeserializeDict, SerializeDict, Type};

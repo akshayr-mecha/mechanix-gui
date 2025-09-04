@@ -118,7 +118,10 @@ pub async fn describe_key(schema: &str, key: &str) -> Result<String, anyhow::Err
     info!("Describing key: {} in schema: {}", key, schema);
     // Get the key description
     let description = proxy.describe_key(schema, key).await?;
-    debug!("Received description for key {} in schema {}: {}", key, schema, description);
+    debug!(
+        "Received description for key {} in schema {}: {}",
+        key, schema, description
+    );
 
     Ok(description)
 }

@@ -5,7 +5,7 @@ use apps::{AppInfo, AppSearchService};
 use files::FileInfo;
 use log::{debug, error, info, warn};
 use std::sync::Arc;
-use zbus::{dbus_interface, fdo::Error as ZbusError, SignalContext};
+use zbus::{SignalContext, dbus_interface, fdo::Error as ZbusError};
 
 /// The D-Bus path where the ConfigServer interface is served
 pub const SERVED_AT: &str = "/org/mechanix/MxSearch";
@@ -115,7 +115,9 @@ impl ServerInterface {
         info!("Search files: {}", search);
         if !self.config.files.enable_search {
             warn!("Search Files option is disabled");
-            return Err(ZbusError::Failed("Search Files option is disabled".to_string()));
+            return Err(ZbusError::Failed(
+                "Search Files option is disabled".to_string(),
+            ));
         }
         // At some point later: perform a search
         let results = match self

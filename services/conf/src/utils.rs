@@ -1,7 +1,7 @@
-use std::fs::File;
-use std::io::Read;
 use anyhow::Context;
 use log::info;
+use std::fs::File;
+use std::io::Read;
 
 /// Read and parse a TOML file, converting it to JSON bytes
 ///

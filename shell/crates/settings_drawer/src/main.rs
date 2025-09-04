@@ -2,8 +2,6 @@ use bevy::{prelude::*, window::ExitCondition, winit::WinitPlugin};
 use bevy_wayland::prelude::*;
 use settings_drawer::SettingsDrawerPlugin;
 
-
-
 fn main() {
     App::new()
         .add_plugins((

@@ -3,7 +3,7 @@ mod server;
 mod service;
 
 use crate::error::ServerError;
-use crate::server::{ServerInterface, SERVED_AT};
+use crate::server::{SERVED_AT, ServerInterface};
 use anyhow::{Context, Result};
 use app_actions::{AppActionsConfig, AppActionsService};
 use apps::{AppSearchService, Apps as AppSearchConfig};

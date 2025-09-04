@@ -8,16 +8,16 @@ use std::{
     time::Duration,
 };
 
-use crate::utils::{get_last_modified_timestamp, parse_desktop_entry, DesktopEntry};
 use crate::Apps;
+use crate::utils::{DesktopEntry, get_last_modified_timestamp, parse_desktop_entry};
 use tantivy::query::TermQuery;
-use tantivy::schema::{Field, IndexRecordOption, Value, STRING};
+use tantivy::schema::{Field, IndexRecordOption, STRING, Value};
 use tantivy::{
-    collector::TopDocs, doc, query::QueryParser, schema::{Schema, STORED, TEXT}, Document, Index,
-    IndexReader,
-    IndexWriter,
-    TantivyDocument,
-    Term,
+    Document, Index, IndexReader, IndexWriter, TantivyDocument, Term,
+    collector::TopDocs,
+    doc,
+    query::QueryParser,
+    schema::{STORED, Schema, TEXT},
 };
 use tokio::{sync::mpsc, task::JoinHandle, time};
 use zbus::zvariant::{DeserializeDict, SerializeDict, Type};

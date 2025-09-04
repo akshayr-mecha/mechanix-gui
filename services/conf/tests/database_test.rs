@@ -46,8 +46,11 @@ fn test_database_insert_settings_and_get() {
     let values = result.unwrap();
     assert!(!values.is_empty(), "Values should not be empty");
     assert!(values.contains_key(key), "Values should contain the key");
-    assert_eq!(values.get(key).unwrap(), &String::from_utf8_lossy(value).to_string(),
-               "Retrieved value should match inserted value");
+    assert_eq!(
+        values.get(key).unwrap(),
+        &String::from_utf8_lossy(value).to_string(),
+        "Retrieved value should match inserted value"
+    );
 }
 
 #[test]
@@ -57,10 +60,16 @@ fn test_database_get_nonexistent() {
 
     // Try to get a nonexistent value
     let result = db.get("nonexistent_schema", "nonexistent_key");
-    assert!(result.is_ok(), "Get should succeed even for nonexistent keys");
+    assert!(
+        result.is_ok(),
+        "Get should succeed even for nonexistent keys"
+    );
 
     let values = result.unwrap();
-    assert!(values.is_empty(), "Values should be empty for nonexistent key");
+    assert!(
+        values.is_empty(),
+        "Values should be empty for nonexistent key"
+    );
 }
 
 #[test]
@@ -84,7 +93,10 @@ fn test_database_insert_checksum_and_get() {
     assert!(checksum_opt.is_some(), "Checksum should exist");
 
     let retrieved_checksum = checksum_opt.unwrap();
-    assert_eq!(retrieved_checksum, checksum_value, "Retrieved checksum should match inserted checksum");
+    assert_eq!(
+        retrieved_checksum, checksum_value,
+        "Retrieved checksum should match inserted checksum"
+    );
 }
 
 #[test]
@@ -98,7 +110,7 @@ fn test_database_scan_with_prefix() {
     let keys = [
         format!("{}{}", prefix, "key1"),
         format!("{}{}", prefix, "key2"),
-        format!("{}{}", prefix, "key3")
+        format!("{}{}", prefix, "key3"),
     ];
     let value = b"test_value";
 
@@ -117,15 +129,25 @@ fn test_database_scan_with_prefix() {
     assert!(result.is_ok(), "Scan with prefix should succeed");
 
     let values = result.unwrap();
-    assert_eq!(values.len(), keys.len(), "Should find all keys with the prefix");
+    assert_eq!(
+        values.len(),
+        keys.len(),
+        "Should find all keys with the prefix"
+    );
 
     // Check that all keys with the prefix are in the result
     for key in &keys {
-        assert!(values.contains_key(key), "Values should contain the key with prefix");
+        assert!(
+            values.contains_key(key),
+            "Values should contain the key with prefix"
+        );
     }
 
     // Check that the key without the prefix is not in the result
-    assert!(!values.contains_key(non_prefix_key), "Values should not contain the key without prefix");
+    assert!(
+        !values.contains_key(non_prefix_key),
+        "Values should not contain the key without prefix"
+    );
 }
 
 #[test]
@@ -135,7 +157,10 @@ fn test_database_get_nonexistent_checksum() {
 
     // Try to get a nonexistent checksum
     let result = db.get_checksum("nonexistent_checksum", "nonexistent_key");
-    assert!(result.is_ok(), "Get checksum should succeed even for nonexistent keys");
+    assert!(
+        result.is_ok(),
+        "Get checksum should succeed even for nonexistent keys"
+    );
 
     let checksum_opt = result.unwrap();
     assert!(checksum_opt.is_none(), "Checksum should not exist");
@@ -166,6 +191,9 @@ fn test_database_insert_settings_update() {
     let values = result.unwrap();
     assert!(!values.is_empty(), "Values should not be empty");
     assert!(values.contains_key(key), "Values should contain the key");
-    assert_eq!(values.get(key).unwrap(), &String::from_utf8_lossy(value2).to_string(),
-               "Retrieved value should match updated value");
+    assert_eq!(
+        values.get(key).unwrap(),
+        &String::from_utf8_lossy(value2).to_string(),
+        "Retrieved value should match updated value"
+    );
 }

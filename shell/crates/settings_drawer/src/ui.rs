@@ -1,7 +1,6 @@
 use crate::components::*;
 use bevy::prelude::*;
 
-
 pub fn ui(mut commands: &Commands) -> impl Bundle {
     (
         Node {

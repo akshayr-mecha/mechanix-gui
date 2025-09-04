@@ -3,7 +3,7 @@ use app_actions::AppActions;
 use apps::AppInfo;
 use files::FileInfo;
 use log::{debug, info};
-use zbus::{dbus_proxy, Connection};
+use zbus::{Connection, dbus_proxy};
 
 #[derive(Clone)]
 pub struct MxSearchService {

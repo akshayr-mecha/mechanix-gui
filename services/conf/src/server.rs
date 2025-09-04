@@ -78,7 +78,10 @@ impl ConfigServerInterface {
     /// ["org.mechanix.app1", "org.mechanix.app2"]
     /// ```
     pub async fn list_schemas(&self) -> Result<String, ZbusError> {
-        info!("Listing all schemas in directory: {}", self.schema_dir.display());
+        info!(
+            "Listing all schemas in directory: {}",
+            self.schema_dir.display()
+        );
         let mut keys = Vec::new();
         if let Ok(entries) = fs::read_dir(&self.schema_dir) {
             for entry in entries.flatten() {
@@ -95,7 +98,10 @@ impl ConfigServerInterface {
                 }
             }
         } else {
-            warn!("Could not read schema directory: {}", self.schema_dir.display());
+            warn!(
+                "Could not read schema directory: {}",
+                self.schema_dir.display()
+            );
         }
         let json = serde_json::to_string(&keys)
             .map_err(|e| ZbusError::Failed(format!("JSON error: {}", e)))?;
@@ -243,7 +249,6 @@ impl ConfigServerInterface {
         Ok(results)
     }
 
-
     /// Set a setting value in the database.
     ///
     /// This method validates and stores a setting value in the database using the specified key.
@@ -304,7 +309,10 @@ impl ConfigServerInterface {
                     Ok(ctxt) => {
                         let key = key.split('.').skip(3).collect::<Vec<&str>>().join(".");
                         info!("Emitting notification for key: {}", key);
-                        if let Err(e) = self.schema_key_changed(&ctxt, &schema_name, &key, &value).await {
+                        if let Err(e) = self
+                            .schema_key_changed(&ctxt, &schema_name, &key, &value)
+                            .await
+                        {
                             error!("Failed to emit notification for key {}: {}", key, e);
                         } else {
                             debug!("Successfully emitted notification for key: {}", key);
@@ -505,7 +513,11 @@ fn get_value_and_locked_by_path<'a>(
 /// * `Some(PathBuf)` - The path to the latest schema file if found
 /// * `None` - If no matching files were found
 fn find_latest_schema_file<P: AsRef<Path>>(directory: P, schema_name: &str) -> Option<PathBuf> {
-    debug!("Searching for latest schema file for schema: {} in dir: {}", schema_name, directory.as_ref().display());
+    debug!(
+        "Searching for latest schema file for schema: {} in dir: {}",
+        schema_name,
+        directory.as_ref().display()
+    );
     let pattern = format!(
         r"^(?P<prefix>\\d+)-?{}\\.(toml|tom)$",
         regex::escape(schema_name)

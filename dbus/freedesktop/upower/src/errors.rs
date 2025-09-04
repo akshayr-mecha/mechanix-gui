@@ -3,7 +3,7 @@
 use crate::proxies::ProxyError;
 
 /// Represents errors that can occur when interacting with UPower.
-#[derive(Clone, Debug,  thiserror::Error)]
+#[derive(Clone, Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum UpowerError {
     /// A generic error with no additional context.

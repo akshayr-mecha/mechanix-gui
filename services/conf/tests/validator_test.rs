@@ -3,7 +3,8 @@ use toml::Value;
 
 // Custom validation function for testing that doesn't rely on namespace parsing
 fn test_validate_entry(entry: &toml::Value, value: &str) -> Result<(), String> {
-    let type_str = entry.get("type")
+    let type_str = entry
+        .get("type")
         .and_then(|v| v.as_str())
         .ok_or("Type not specified in schema")?;
 
@@ -22,7 +23,8 @@ fn test_validate_entry(entry: &toml::Value, value: &str) -> Result<(), String> {
             }
         }
         "enum" => {
-            let options = entry.get("options")
+            let options = entry
+                .get("options")
                 .and_then(|v| v.as_array())
                 .ok_or("Enum options not specified")?;
             let found = options.iter().any(|opt| opt.as_str() == Some(value));
@@ -62,9 +64,17 @@ fn test_validate_schema_missing_type() {
 
     // Validate the schema
     let result = validate_schema(&schema);
-    assert!(result.is_err(), "Schema with missing type should fail validation");
-    assert!(result.unwrap_err().to_string().contains("missing or invalid 'type'"),
-            "Error message should mention missing type");
+    assert!(
+        result.is_err(),
+        "Schema with missing type should fail validation"
+    );
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("missing or invalid 'type'"),
+        "Error message should mention missing type"
+    );
 }
 
 #[test]
@@ -79,10 +89,16 @@ fn test_validate_schema_missing_default() {
 
     // Validate the schema
     let result = validate_schema(&schema);
-    assert!(result.is_err(), "Schema with missing default should fail validation");
+    assert!(
+        result.is_err(),
+        "Schema with missing default should fail validation"
+    );
     let error_msg = result.unwrap_err().to_string();
-    assert!(error_msg.contains("missing 'default'"),
-            "Error message '{}' should mention missing default", error_msg);
+    assert!(
+        error_msg.contains("missing 'default'"),
+        "Error message '{}' should mention missing default",
+        error_msg
+    );
 }
 
 #[test]
@@ -97,9 +113,17 @@ fn test_validate_schema_missing_description() {
 
     // Validate the schema
     let result = validate_schema(&schema);
-    assert!(result.is_err(), "Schema with missing description should fail validation");
-    assert!(result.unwrap_err().to_string().contains("missing 'description'"),
-            "Error message should mention missing description");
+    assert!(
+        result.is_err(),
+        "Schema with missing description should fail validation"
+    );
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("missing 'description'"),
+        "Error message should mention missing description"
+    );
 }
 
 #[test]
@@ -114,9 +138,14 @@ fn test_validate_schema_invalid_type() {
 
     // Validate the schema
     let result = validate_schema(&schema);
-    assert!(result.is_err(), "Schema with invalid type should fail validation");
-    assert!(result.unwrap_err().to_string().contains("invalid 'type'"),
-            "Error message should mention invalid type");
+    assert!(
+        result.is_err(),
+        "Schema with invalid type should fail validation"
+    );
+    assert!(
+        result.unwrap_err().to_string().contains("invalid 'type'"),
+        "Error message should mention invalid type"
+    );
 }
 
 #[test]
@@ -146,9 +175,17 @@ fn test_validate_schema_enum_missing_options() {
 
     // Validate the schema
     let result = validate_schema(&schema);
-    assert!(result.is_err(), "Enum schema with missing options should fail validation");
-    assert!(result.unwrap_err().to_string().contains("missing valid 'options'"),
-            "Error message should mention missing options");
+    assert!(
+        result.is_err(),
+        "Enum schema with missing options should fail validation"
+    );
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("missing valid 'options'"),
+        "Error message should mention missing options"
+    );
 }
 
 #[test]
@@ -163,9 +200,14 @@ fn test_validate_schema_enum_default_not_in_options() {
 
     // Validate the schema
     let result = validate_schema(&schema);
-    assert!(result.is_err(), "Enum schema with default not in options should fail validation");
-    assert!(result.unwrap_err().to_string().contains("not in options"),
-            "Error message should mention default not in options");
+    assert!(
+        result.is_err(),
+        "Enum schema with default not in options should fail validation"
+    );
+    assert!(
+        result.unwrap_err().to_string().contains("not in options"),
+        "Error message should mention default not in options"
+    );
 }
 
 #[test]
@@ -183,10 +225,16 @@ fn test_validate_setting_bool_valid() {
 
     // Use our custom validation function
     let result = test_validate_entry(section_key, "true");
-    assert!(result.is_ok(), "Valid boolean setting should pass validation");
+    assert!(
+        result.is_ok(),
+        "Valid boolean setting should pass validation"
+    );
 
     let result = test_validate_entry(section_key, "false");
-    assert!(result.is_ok(), "Valid boolean setting should pass validation");
+    assert!(
+        result.is_ok(),
+        "Valid boolean setting should pass validation"
+    );
 }
 
 #[test]
@@ -204,9 +252,14 @@ fn test_validate_setting_bool_invalid() {
 
     // Use our custom validation function
     let result = test_validate_entry(section_key, "not_a_bool");
-    assert!(result.is_err(), "Invalid boolean setting should fail validation");
-    assert!(result.unwrap_err().contains("not a valid boolean"),
-            "Error message should mention invalid boolean");
+    assert!(
+        result.is_err(),
+        "Invalid boolean setting should fail validation"
+    );
+    assert!(
+        result.unwrap_err().contains("not a valid boolean"),
+        "Error message should mention invalid boolean"
+    );
 }
 
 #[test]
@@ -224,10 +277,16 @@ fn test_validate_setting_number_valid() {
 
     // Use our custom validation function
     let result = test_validate_entry(section_key, "42");
-    assert!(result.is_ok(), "Valid number setting should pass validation");
+    assert!(
+        result.is_ok(),
+        "Valid number setting should pass validation"
+    );
 
     let result = test_validate_entry(section_key, "3.14");
-    assert!(result.is_ok(), "Valid number setting should pass validation");
+    assert!(
+        result.is_ok(),
+        "Valid number setting should pass validation"
+    );
 }
 
 #[test]
@@ -245,9 +304,14 @@ fn test_validate_setting_number_invalid() {
 
     // Validate an invalid number setting
     let result = validate_value(section_key, "org.mechanix.section.key", "not_a_number");
-    assert!(result.is_err(), "Invalid number setting should fail validation");
-    assert!(result.unwrap_err().contains("not a valid number"),
-            "Error message should mention invalid number");
+    assert!(
+        result.is_err(),
+        "Invalid number setting should fail validation"
+    );
+    assert!(
+        result.unwrap_err().contains("not a valid number"),
+        "Error message should mention invalid number"
+    );
 }
 
 #[test]
@@ -286,9 +350,14 @@ fn test_validate_setting_enum_invalid() {
 
     // Validate an invalid enum setting
     let result = validate_value(section_key, "org.mechanix.section.key", "option3");
-    assert!(result.is_err(), "Invalid enum setting should fail validation");
-    assert!(result.unwrap_err().contains("not in enum options"),
-            "Error message should mention not in enum options");
+    assert!(
+        result.is_err(),
+        "Invalid enum setting should fail validation"
+    );
+    assert!(
+        result.unwrap_err().contains("not in enum options"),
+        "Error message should mention not in enum options"
+    );
 }
 
 #[test]
@@ -306,7 +375,12 @@ fn test_validate_setting_unknown_type() {
 
     // Validate a setting with an unknown type
     let result = validate_value(section_key, "org.mechanix.section.key", "value");
-    assert!(result.is_err(), "Setting with unknown type should fail validation");
-    assert!(result.unwrap_err().contains("Unknown type"),
-            "Error message should mention unknown type");
+    assert!(
+        result.is_err(),
+        "Setting with unknown type should fail validation"
+    );
+    assert!(
+        result.unwrap_err().contains("Unknown type"),
+        "Error message should mention unknown type"
+    );
 }

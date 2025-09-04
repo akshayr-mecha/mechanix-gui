@@ -102,15 +102,13 @@ pub fn parse_desktop_entry(path: &Path) -> Option<DesktopEntry> {
 /// # Errors
 ///
 /// Returns an `std::io::Error` if the file cannot be read.
-pub fn get_last_modified_timestamp(
-    path: &Path,
-) -> Result<String, std::io::Error> {
+pub fn get_last_modified_timestamp(path: &Path) -> Result<String, std::io::Error> {
     if let Some(ext) = path.extension() {
         if path.is_file() {
             if let Ok(metadata) = std::fs::metadata(path) {
                 //Store last modified as a timestamp
                 if let Ok(duration) = metadata.modified()?.duration_since(UNIX_EPOCH) {
-                    return Ok(duration.as_secs().to_string())
+                    return Ok(duration.as_secs().to_string());
                 }
             }
         }

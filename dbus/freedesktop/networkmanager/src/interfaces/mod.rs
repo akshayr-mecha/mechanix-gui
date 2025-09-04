@@ -69,7 +69,6 @@ pub trait NetworkManagerInterface: Send + Sync + Clone {
     /// Return an error if the operation fails.
     async fn toggle_wireless(&self, enabled: bool) -> Result<(), ProxyError>;
 
-
     /// Get the list of available wireless networks.
     ///
     /// # Returns
@@ -108,10 +107,7 @@ pub trait NetworkManagerInterface: Send + Sync + Clone {
     ///
     /// # Errors
     /// Return an error if the operation fails.
-    async fn connect_to_saved_network(
-        &self,
-        ssid: &str,
-    ) -> Result<(), ProxyError>;
+    async fn connect_to_saved_network(&self, ssid: &str) -> Result<(), ProxyError>;
 
     /// Forget a previously saved network.
     ///

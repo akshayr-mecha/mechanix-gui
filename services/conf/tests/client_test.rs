@@ -1,14 +1,21 @@
-use mockall::predicate::*;
 use mockall::mock;
+use mockall::predicate::*;
 use std::collections::HashMap;
 
 // Create our own versions of get_setting and set_setting that take a mock proxy
-async fn get_setting(proxy: &MockConfigServerProxy, key: &str) -> Result<HashMap<String, String>, anyhow::Error> {
+async fn get_setting(
+    proxy: &MockConfigServerProxy,
+    key: &str,
+) -> Result<HashMap<String, String>, anyhow::Error> {
     let value = proxy.get_setting(key).await?;
     Ok(value)
 }
 
-async fn set_setting(proxy: &MockConfigServerProxy, key: &str, value: &str) -> Result<String, anyhow::Error> {
+async fn set_setting(
+    proxy: &MockConfigServerProxy,
+    key: &str,
+    value: &str,
+) -> Result<String, anyhow::Error> {
     let result = proxy.set_setting(key, value).await?;
     Ok(result)
 }
@@ -27,7 +34,10 @@ async fn test_get_setting() {
     // Create a mock proxy
     let mut mock_proxy = MockConfigServerProxy::new();
 
-    let settings = HashMap::from([("org.mechanix.test.section.key".to_string(), "test_value".to_string())]);
+    let settings = HashMap::from([(
+        "org.mechanix.test.section.key".to_string(),
+        "test_value".to_string(),
+    )]);
     // Set expectations
     mock_proxy
         .expect_get_setting()
@@ -40,7 +50,11 @@ async fn test_get_setting() {
     // Verify the result
     assert!(result.is_ok(), "Get setting should succeed");
     let result_map = result.unwrap();
-    assert_eq!(result_map.get("org.mechanix.test.section.key").unwrap(), "test_value", "Retrieved value should match expected value");
+    assert_eq!(
+        result_map.get("org.mechanix.test.section.key").unwrap(),
+        "test_value",
+        "Retrieved value should match expected value"
+    );
 }
 
 #[tokio::test]
@@ -59,7 +73,11 @@ async fn test_set_setting() {
 
     // Verify the result
     assert!(result.is_ok(), "Set setting should succeed");
-    assert_eq!(result.unwrap(), "Success", "Result should match expected value");
+    assert_eq!(
+        result.unwrap(),
+        "Success",
+        "Result should match expected value"
+    );
 }
 
 #[tokio::test]
@@ -78,7 +96,10 @@ async fn test_get_setting_error() {
 
     // Verify the result
     assert!(result.is_err(), "Get setting should fail");
-    assert!(result.unwrap_err().to_string().contains("Test error"), "Error message should contain the expected error");
+    assert!(
+        result.unwrap_err().to_string().contains("Test error"),
+        "Error message should contain the expected error"
+    );
 }
 
 #[tokio::test]
@@ -96,6 +117,13 @@ async fn test_set_setting_error() {
     let result = set_setting(&mock_proxy, "org.mechanix.test.section.key", "test_value").await;
 
     // Verify the result
-    assert!(result.is_ok(), "Set setting should succeed even with error response");
-    assert_eq!(result.unwrap(), "Error: Test error", "Result should match expected error message");
+    assert!(
+        result.is_ok(),
+        "Set setting should succeed even with error response"
+    );
+    assert_eq!(
+        result.unwrap(),
+        "Error: Test error",
+        "Result should match expected error message"
+    );
 }

@@ -62,7 +62,7 @@ impl From<u32> for BatteryState {
             4 => BatteryState::FullCharged,
             5 => BatteryState::PendingCharge,
             6 => BatteryState::PendingDischarge,
-            _ => BatteryState::Unknown
+            _ => BatteryState::Unknown,
         }
     }
 }

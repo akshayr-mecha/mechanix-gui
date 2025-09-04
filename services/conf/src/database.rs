@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use anyhow::{Context, Result};
-use sled::{Tree};
+use log::{debug, info, warn};
+use sled::Tree;
 use sled::{Config, Db};
+use std::collections::HashMap;
 use std::path::PathBuf;
-use log::{info, debug, warn};
 
 /// Database struct for storing and retrieving configuration data.
 ///
@@ -38,13 +38,11 @@ impl Database {
         info!("Opening database at path: {}", db_path.display());
         // Ensure parent directories exist
         if let Some(parent) = db_path.parent() {
-            std::fs::create_dir_all(parent)
-                .expect("Failed to create database directory");
+            std::fs::create_dir_all(parent).expect("Failed to create database directory");
         }
 
         let config = Config::new().path(&db_path);
-        let db = config.open()
-            .expect("Failed to open database");
+        let db = config.open().expect("Failed to open database");
 
         Self { db }
     }
@@ -64,7 +62,9 @@ impl Database {
     /// * `Err(...)` if there was an error during retrieval
     fn get_tree(&self, identifier: &str) -> Result<Tree> {
         debug!("Opening tree: {}", identifier);
-        let tree = self.db.open_tree(identifier)
+        let tree = self
+            .db
+            .open_tree(identifier)
             .with_context(|| format!("Failed to open tree: {}", identifier))?;
         Ok(tree)
     }
@@ -88,14 +88,23 @@ impl Database {
         &mut self,
         schema_name: &str,
         checksum_identifier: &str,
-        checksum_value: &u32
+        checksum_value: &u32,
     ) -> Result<()> {
-        info!("Inserting checksum for schema: {} value: {}", schema_name, checksum_value);
+        info!(
+            "Inserting checksum for schema: {} value: {}",
+            schema_name, checksum_value
+        );
         let checksum_tree = self.get_tree(checksum_identifier)?;
         debug!("Checksum tree opened: {}", checksum_identifier);
         let checksum = checksum_value.to_le_bytes();
-        checksum_tree.insert(schema_name, checksum.as_ref())
-            .with_context(|| format!("Failed to insert checksum with schema_name: {}", schema_name))?;
+        checksum_tree
+            .insert(schema_name, checksum.as_ref())
+            .with_context(|| {
+                format!(
+                    "Failed to insert checksum with schema_name: {}",
+                    schema_name
+                )
+            })?;
         debug!("Checksum inserted for schema: {}", schema_name);
         Ok(())
     }
@@ -121,7 +130,10 @@ impl Database {
         key: &str,
         value: &[u8],
     ) -> Result<()> {
-        info!("Inserting setting: {} in schema: {}", key, schema_identifier);
+        info!(
+            "Inserting setting: {} in schema: {}",
+            key, schema_identifier
+        );
         let tree = self.get_tree(schema_identifier)?;
         debug!("Tree opened for schema: {}", schema_identifier);
         tree.insert(key, value)
@@ -147,7 +159,8 @@ impl Database {
     pub fn get(&self, identifier: &str, key: &str) -> Result<HashMap<String, String>> {
         debug!("Getting value for key: {} from tree: {}", key, identifier);
         let tree = self.get_tree(identifier)?;
-        let value_opt = tree.get(key)
+        let value_opt = tree
+            .get(key)
             .with_context(|| format!("Failed to get value with key: {}", key))?;
 
         let mut results = HashMap::new();
@@ -187,7 +200,11 @@ impl Database {
             let value_str = String::from_utf8_lossy(&v).to_string();
             results.insert(key_str, value_str);
         }
-        debug!("Found {} matching entries for prefix {}", results.len(), prefix);
+        debug!(
+            "Found {} matching entries for prefix {}",
+            results.len(),
+            prefix
+        );
 
         Ok(results)
     }
@@ -208,9 +225,13 @@ impl Database {
     /// * `Ok(Some(checksum))` if the key is present and the value is a valid checksum
     /// * `Err(...)` if there was an error during retrieval
     pub fn get_checksum(&self, checksum_identifier: &str, key: &str) -> Result<Option<u32>> {
-        debug!("Getting checksum for key: {} from tree: {}", key, checksum_identifier);
+        debug!(
+            "Getting checksum for key: {} from tree: {}",
+            key, checksum_identifier
+        );
         let checksum_tree = self.get_tree(checksum_identifier)?;
-        let value_opt = checksum_tree.get(key)
+        let value_opt = checksum_tree
+            .get(key)
             .with_context(|| format!("Failed to get checksum with key: {}", key))?;
         if let Some(value) = value_opt {
             debug!("Checksum value found for key: {}: {:?}", key, value);
@@ -225,7 +246,10 @@ impl Database {
                 Ok(None)
             }
         } else {
-            warn!("No checksum found for key: {} in tree: {}", key, checksum_identifier);
+            warn!(
+                "No checksum found for key: {} in tree: {}",
+                key, checksum_identifier
+            );
             Ok(None)
         }
     }

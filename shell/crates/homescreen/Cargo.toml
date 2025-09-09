@@ -11,5 +11,6 @@ keywords.workspace = true
 
 [dependencies]
 bevy = { workspace = true }
+bevy_prototype_lyon = "0.13.0"
 bevy_wayland = { workspace = true }
 derive_builder = "0.20.2"

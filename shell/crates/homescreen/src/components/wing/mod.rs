@@ -10,7 +10,7 @@ use bevy::{
 use derive_builder::Builder;
 mod system;
 
-#[derive(Component, Clone, Copy, Debug)]
+#[derive(Component, Clone, Debug)]
 pub struct Wing {
     pub position: Vec2,
     pub size: Vec2,
@@ -19,8 +19,10 @@ pub struct Wing {
     pub background_color: Color,
     pub border_color: Color,
 
-    pub upper_wing: bool,
-    pub lower_wing: bool,
+    pub upper_wing: f32,
+    pub lower_wing: f32,
+
+    pub vertices: Option<Vec<Vec2>>,
 }
 
 pub struct WingWidgetPlugin;
@@ -41,37 +43,55 @@ pub(super) struct WingMesh {
     pub lower_wing_width: f32,
     pub border_radius: f32,
     pub mesh_handle: Option<Handle<Mesh>>,
+    pub vertices: Option<Vec<Vec2>>,
 }
 
 impl WingMesh {
     pub fn get_mesh(&self) -> Mesh {
-        let mut corners = vec![
-            // if self.upper_wing_height > 0.1 {
-            Vec2::new(0.0, self.upper_wing_height),
-            // } else {
-            //     Vec2::new(0.0, 0.0)
-            // },
-            // if self.upper_wing_height > 0.1 {
-            Vec2::new(
-                self.upper_wing_width - self.upper_wing_height,
-                self.upper_wing_height,
-            ),
-            // } else {
-            //     Vec2::new(0.0, 0.0)
-            // },
-            Vec2::new(self.upper_wing_width, 0.0),
-            Vec2::new(self.width, 0.0),
-            Vec2::new(self.width, -self.height - self.lower_wing_height),
-            Vec2::new(
-                self.width - self.lower_wing_width + self.lower_wing_height,
-                -self.height - self.lower_wing_height,
-            ),
-            Vec2::new(self.width - self.lower_wing_width, -self.height),
-            Vec2::new(0.0, -self.height),
-        ];
+        let upper_corners = if self.upper_wing_height > 0.1 && self.upper_wing_width > 0.1 {
+            vec![
+                Vec2::new(0.0, 0.0),
+                Vec2::new(self.upper_wing_width, 0.0),
+                Vec2::new(
+                    self.upper_wing_width + self.upper_wing_height,
+                    -self.upper_wing_height,
+                ),
+                Vec2::new(self.width, -self.upper_wing_height),
+            ]
+        } else {
+            vec![Vec2::new(0.0, 0.0), Vec2::new(self.width, 0.0)]
+        };
+
+        let lower_corners = if self.lower_wing_height > 0.1 && self.lower_wing_width > 0.1 {
+            vec![
+                Vec2::new(self.width, -self.height),
+                Vec2::new(self.width - self.lower_wing_width, -self.height),
+                Vec2::new(
+                    self.width - self.lower_wing_width - self.lower_wing_height,
+                    -self.height + self.lower_wing_height,
+                ),
+                Vec2::new(0.0, -self.height + self.lower_wing_height),
+            ]
+        } else {
+            vec![
+                Vec2::new(self.width, -self.height),
+                Vec2::new(0.0, -self.height),
+            ]
+        };
+
+        let mut corners = vec![];
+        if let Some(vertices) = &self.vertices {
+            corners.extend(vertices);
+        } else {
+            corners.extend(upper_corners);
+            corners.extend(lower_corners);
+        }
+        corners
+            .iter_mut()
+            .for_each(|corner| corner.x = corner.x.clamp(0.0, self.width));
         corners.dedup();
 
-        let filleted_corners = fillet(&corners, self.border_radius, 4);
+        let filleted_corners = fillet(&corners, self.border_radius, 8);
 
         let num_vertices = filleted_corners.len() + 1;
         let num_indices = filleted_corners.len() * 3;

@@ -1,6 +1,6 @@
 use bevy::{
     prelude::*,
-    window::{ExitCondition, PrimaryWindow, WindowResolution},
+    window::{ExitCondition, PrimaryWindow},
     winit::WinitPlugin,
 };
 use bevy_wayland::prelude::*;

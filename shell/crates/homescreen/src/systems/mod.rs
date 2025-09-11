@@ -20,12 +20,12 @@ pub fn display_widgets(
             Wing {
                 position: widget.location,
                 size: widget.size,
-                z_index: 0.0,
+                z_index: if widget.is_floating { 1.0 } else { 0.0 },
                 background_color: widget.info.color,
                 border_color: Color::WHITE,
                 upper_wing: 0.0,
                 lower_wing: 0.0,
-                vertices: None,
+                texture_handle: widget.info.image_handle.clone(),
             },
             render_layer.clone(),
         ));
@@ -33,6 +33,7 @@ pub fn display_widgets(
     let mut upper_winged_vertices = vec![];
     let mut lower_winged_vertices = vec![];
     for (widget, mut wing) in &mut widgets {
+        wing.z_index = if widget.is_floating { 1.0 } else { 0.0 };
         wing.upper_wing = 0.0;
         wing.lower_wing = 0.0;
         wing.position = widget.location;
@@ -44,12 +45,12 @@ pub fn display_widgets(
             if widget.grid_location.y > 0 {
                 upper_winged_vertices.push((widget.grid_location.y, 2));
                 upper_winged_vertices.push((widget.grid_location.y, 3));
-                wing.upper_wing = 195.0;
+                wing.upper_wing = settings.size.x * 0.4875;
             } else {
                 wing.upper_wing = 0.0;
             }
             if widget.grid_location.y < 2 {
-                wing.lower_wing = 195.0;
+                wing.lower_wing = settings.size.x * 0.4875;
                 lower_winged_vertices.push((widget.grid_location.y + widget.grid_size.y, 0));
                 lower_winged_vertices.push((widget.grid_location.y + widget.grid_size.y, 1));
             } else {
@@ -60,14 +61,14 @@ pub fn display_widgets(
             if widget.grid_location.y > 0 {
                 upper_winged_vertices.push((widget.grid_location.y, 2));
                 upper_winged_vertices.push((widget.grid_location.y, 3));
-                wing.upper_wing = 195.0;
+                wing.upper_wing = settings.size.x * 0.4875;
             } else {
                 wing.upper_wing = 0.0;
             }
             if widget.grid_location.y < 1 {
                 lower_winged_vertices.push((widget.grid_location.y + widget.grid_size.y, 0));
                 lower_winged_vertices.push((widget.grid_location.y + widget.grid_size.y, 1));
-                wing.lower_wing = 195.0;
+                wing.lower_wing = settings.size.x * 0.4875;
             } else {
                 wing.lower_wing = 0.0;
             }
@@ -77,7 +78,7 @@ pub fn display_widgets(
         if widget.is_floating {
             continue;
         }
-        wing.position = widget.location + 5.0;
+        wing.position = widget.location + settings.size * 0.0125;
         if widget.grid_size.x == 4 {
             continue;
         }
@@ -85,15 +86,16 @@ pub fn display_widgets(
             widget.grid_location.y + widget.grid_size.y,
             widget.grid_location.x + widget.grid_size.x - 1,
         )) {
-            wing.size.y = widget.size.y + 10.0;
+            wing.size.y = widget.size.y + settings.size.y * 0.0425;
             if widget.grid_location.x < 3 {
-                wing.lower_wing = (widget.location.x + widget.size.x - 30.0).max(0.0);
+                wing.lower_wing =
+                    (widget.location.x + widget.size.x - settings.size.x * 0.075).max(0.0);
             }
         }
         if lower_winged_vertices.contains(&(widget.grid_location.y, widget.grid_location.x)) {
-            wing.position.y = widget.location.y + 25.0;
-            wing.size.y = widget.size.y + 10.0;
-            wing.upper_wing = (-widget.location.x - 30.0).max(0.0);
+            wing.position.y = widget.location.y + settings.size.y * 0.075;
+            wing.size.y = widget.size.y + settings.size.y * 0.0425;
+            wing.upper_wing = (-widget.location.x - settings.size.y * 0.075).max(0.0);
         }
     }
 }
@@ -104,6 +106,7 @@ pub fn homescreen_event_handler(
     mut event_reader: EventReader<HomescreenEvent>,
     mut widgets: Query<(&mut HomescreenWidget)>,
 ) {
+    let mut next_id = widgets.iter().len();
     for event in event_reader.read() {
         match event {
             HomescreenEvent::CreateWidget { location, info } => {
@@ -123,8 +126,9 @@ pub fn homescreen_event_handler(
                         .collect(),
                 );
                 if is_empty {
+                    next_id += 1;
                     commands.spawn((HomescreenWidget {
-                        id: crate::HomescreenWidgetId(widgets.iter().len()),
+                        id: crate::HomescreenWidgetId(next_id),
                         info: info.clone(),
                         location: settings.grid_to_screen(&settings.screen_to_grid(location)),
                         grid_location: settings.screen_to_grid(location),
@@ -149,8 +153,9 @@ pub fn homescreen_event_handler(
                         .collect(),
                 ) {
                     let mut size = info.size;
+                    next_id += 1;
                     commands.spawn((HomescreenWidget {
-                        id: crate::HomescreenWidgetId(widgets.iter().len()),
+                        id: crate::HomescreenWidgetId(next_id),
                         info: info.clone(),
                         location: settings.grid_to_screen(&settings.screen_to_grid(location)),
                         grid_location: settings.screen_to_grid(location),

@@ -15,19 +15,19 @@ pub struct HomescreenPlugin;
 impl Plugin for HomescreenPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((WingWidgetPlugin,));
-        app.add_systems(Startup, (setup,).chain());
+        app.add_systems(Startup, (setup, spawn_widgets).chain());
         app.add_systems(
             Update,
             (
                 exit_on_esc,
                 homescreen_event_handler,
                 display_widgets,
-                test_system,
+                update_time,
+                update_clock_node_size, // test_system,
             ),
         );
         app.add_observer(on_drag);
         app.add_observer(on_drop);
-        // app.add_observer(on_right_click);
         app.init_resource::<HomescreenSettings>();
         app.add_event::<HomescreenEvent>();
     }
@@ -42,10 +42,6 @@ fn on_drop(
     if let Ok(widget) = widgets.get(entity) {
         event_writer.write(HomescreenEvent::DropWidget { id: widget.id });
     }
-}
-
-fn on_right_click(click: Trigger<Pointer<Click>>, mut commands: Commands) {
-    commands.entity(click.target).despawn();
 }
 
 fn on_drag(
@@ -66,56 +62,56 @@ fn on_drag(
     }
 }
 
-fn test_system(
-    keys: Res<ButtonInput<KeyCode>>,
-    window: Single<&Window, With<HomescreenWindow>>,
-    camera: Single<(&Camera, &GlobalTransform), With<HomescreenCamera>>,
-    mut event_writer: EventWriter<HomescreenEvent>,
-    mut local: Local<usize>,
-    mut size: Local<IVec2>,
-) {
-    if keys.just_pressed(KeyCode::KeyA) {
-        size.x -= 1;
-    }
-    if keys.just_pressed(KeyCode::KeyD) {
-        size.x += 1;
-    }
-    if keys.just_pressed(KeyCode::KeyW) {
-        size.y -= 1;
-    }
-    if keys.just_pressed(KeyCode::KeyS) {
-        size.y += 1;
-    }
+// fn test_system(
+//     keys: Res<ButtonInput<KeyCode>>,
+//     window: Single<&Window, With<HomescreenWindow>>,
+//     camera: Single<(&Camera, &GlobalTransform), With<HomescreenCamera>>,
+//     mut event_writer: EventWriter<HomescreenEvent>,
+//     mut local: Local<usize>,
+//     mut size: Local<IVec2>,
+// ) {
+//     if keys.just_pressed(KeyCode::KeyA) {
+//         size.x -= 1;
+//     }
+//     if keys.just_pressed(KeyCode::KeyD) {
+//         size.x += 1;
+//     }
+//     if keys.just_pressed(KeyCode::KeyW) {
+//         size.y -= 1;
+//     }
+//     if keys.just_pressed(KeyCode::KeyS) {
+//         size.y += 1;
+//     }
 
-    if keys.just_pressed(KeyCode::KeyC) {
-        *local += 1;
-        let colors: Vec<Color> = vec![
-            Color::srgb(1.0, 0.2, 0.2), // Red
-            Color::srgb(0.2, 0.8, 0.2), // Green
-            Color::srgb(0.2, 0.4, 1.0), // Blue
-            Color::srgb(1.0, 1.0, 0.2), // Yellow
-            Color::srgb(1.0, 0.5, 0.0), // Orange
-            Color::srgb(0.7, 0.2, 1.0), // Purple
-            Color::srgb(0.2, 1.0, 1.0), // Cyan
-            Color::srgb(1.0, 0.4, 0.8), // Pink
-        ];
-        *local %= colors.len();
-        if let Some(widget_position) = window.cursor_position() {
-            let widget_position = camera
-                .0
-                .viewport_to_world_2d(camera.1, widget_position)
-                .unwrap();
-            event_writer.write(HomescreenEvent::CreateWidget {
-                location: widget_position,
-                info: HomescreenWidgetInfo {
-                    size: size.abs(),
-                    name: "Test Widget".into(),
-                    color: colors[*local],
-                },
-            });
-        }
-    }
-}
+//     if keys.just_pressed(KeyCode::KeyC) {
+//         *local += 1;
+//         let colors: Vec<Color> = vec![
+//             Color::srgb(1.0, 0.2, 0.2), // Red
+//             Color::srgb(0.2, 0.8, 0.2), // Green
+//             Color::srgb(0.2, 0.4, 1.0), // Blue
+//             Color::srgb(1.0, 1.0, 0.2), // Yellow
+//             Color::srgb(1.0, 0.5, 0.0), // Orange
+//             Color::srgb(0.7, 0.2, 1.0), // Purple
+//             Color::srgb(0.2, 1.0, 1.0), // Cyan
+//             Color::srgb(1.0, 0.4, 0.8), // Pink
+//         ];
+//         *local %= colors.len();
+//         if let Some(widget_position) = window.cursor_position() {
+//             let widget_position = camera
+//                 .0
+//                 .viewport_to_world_2d(camera.1, widget_position)
+//                 .unwrap();
+//             event_writer.write(HomescreenEvent::CreateWidget {
+//                 location: widget_position,
+//                 info: HomescreenWidgetInfo {
+//                     size: size.abs(),
+//                     name: "Test Widget".into(),
+//                     color: colors[*local],
+//                 },
+//             });
+//         }
+//     }
+// }
 
 #[derive(Component, Debug)]
 pub struct HomescreenCamera;
@@ -127,6 +123,7 @@ pub struct HomescreenWidgetInfo {
     pub size: IVec2,
     pub name: String,
     pub color: Color,
+    pub image_handle: Option<Handle<Image>>,
 }
 #[derive(Event, Debug)]
 pub enum HomescreenEvent {
@@ -145,6 +142,7 @@ pub enum HomescreenEvent {
 
 #[derive(Copy, Clone, Hash, Debug, Eq, PartialEq)]
 pub struct HomescreenWidgetId(pub usize);
+
 #[derive(Component, Debug, Clone)]
 pub struct HomescreenWidget {
     pub id: HomescreenWidgetId,
@@ -177,8 +175,8 @@ impl Default for HomescreenSettings {
         Self {
             rows: 4,
             columns: 4,
-            size: (400., 400.).into(),
-            position: (-200.0, 200.0).into(),
+            size: (520., 520.).into(),
+            position: (-260.0, 260.0).into(),
             number_of_pages: 1,
             active_page: Default::default(),
         }

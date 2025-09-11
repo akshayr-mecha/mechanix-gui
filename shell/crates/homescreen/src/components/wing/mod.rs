@@ -22,13 +22,13 @@ pub struct Wing {
     pub upper_wing: f32,
     pub lower_wing: f32,
 
-    pub vertices: Option<Vec<Vec2>>,
+    pub texture_handle: Option<Handle<Image>>,
 }
 
 pub struct WingWidgetPlugin;
 impl Plugin for WingWidgetPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (system::on_wing_added, system::on_wing_changed));
+        app.add_systems(PreUpdate, (system::on_wing_added, system::on_wing_changed));
     }
 }
 
@@ -43,7 +43,7 @@ pub(super) struct WingMesh {
     pub lower_wing_width: f32,
     pub border_radius: f32,
     pub mesh_handle: Option<Handle<Mesh>>,
-    pub vertices: Option<Vec<Vec2>>,
+    pub texture_handle: Option<Handle<Image>>,
 }
 
 impl WingMesh {
@@ -80,12 +80,8 @@ impl WingMesh {
         };
 
         let mut corners = vec![];
-        if let Some(vertices) = &self.vertices {
-            corners.extend(vertices);
-        } else {
-            corners.extend(upper_corners);
-            corners.extend(lower_corners);
-        }
+        corners.extend(upper_corners);
+        corners.extend(lower_corners);
         corners
             .iter_mut()
             .for_each(|corner| corner.x = corner.x.clamp(0.0, self.width));
@@ -103,20 +99,13 @@ impl WingMesh {
 
         positions.push([self.width / 2.0, -self.height / 2.0, 0.0]);
         normals.push([0.0, 0.0, 1.0]);
-        uvs.push([0.5, 0.5]);
-
-        let half_height = self.height / 2.0;
-        let half_width = self.width / 2.0;
+        uvs.push([self.width / 1000.0, self.height / 1000.0]);
         for (i, v) in filleted_corners.iter().enumerate() {
             let x = v.x;
             let y = v.y;
             positions.push([x, y, 0.0]);
             normals.push([0.0, 0.0, 1.0]);
-            uvs.push([
-                (x + half_width) / self.width,
-                (y + half_height + (self.lower_wing_height + self.upper_wing_height) / 2.0)
-                    / (self.height + self.lower_wing_height + self.upper_wing_height),
-            ]);
+            uvs.push([2.0 * (x) / 1000.0, 2.0 * (y) / -1000.0]);
 
             let i = i as u32;
             let num_corners = filleted_corners.len() as u32;
